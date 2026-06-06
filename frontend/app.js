@@ -530,6 +530,7 @@
         document.getElementById("currentRowId").textContent = "row_id: -";
         document.getElementById("currentOriginal").textContent = "";
         document.getElementById("currentOutput").textContent = "";
+        document.getElementById("currentDetails").textContent = "";
         document.getElementById("currentAction").textContent = "WAITING";
         document.getElementById("currentTags").textContent = "-";
         return;
@@ -537,6 +538,7 @@
       document.getElementById("currentRowId").textContent = `row_id: ${payload.index + 1}`;
       document.getElementById("currentOriginal").textContent = payload.original.text_edited || "(空文本)";
       document.getElementById("currentOutput").textContent = payload.output.text_edited || "(空文本)";
+      document.getElementById("currentDetails").textContent = payload.report.notes || payload.output.recognition_errors || "";
       document.getElementById("currentAction").textContent = payload.report.action;
       document.getElementById("currentTags").textContent = payload.report.issue_tags || "-";
     }

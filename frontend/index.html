@@ -57,26 +57,30 @@
             <div><span id="skippedRows">0</span><small>已跳过</small></div>
             <div><span id="reviewRows">0</span><small>需复核</small></div>
           </div>
-        </section>
 
-        <section class="row-panel" aria-label="当前处理行预览">
-          <div class="panel-title">
-            <span>当前行</span>
-            <code id="currentRowId">row_id: -</code>
-          </div>
-          <div class="row-preview">
-            <div>
-              <small>原始 text_edited</small>
-              <p id="currentOriginal"></p>
+          <div class="current-block" aria-label="当前处理行预览">
+            <div class="panel-title">
+              <span>当前行</span>
+              <code id="currentRowId">row_id: -</code>
             </div>
-            <div>
-              <small>输出 text_edited</small>
-              <p id="currentOutput"></p>
+            <div class="row-preview">
+              <div>
+                <small>原始 text_edited</small>
+                <p id="currentOriginal"></p>
+              </div>
+              <div>
+                <small>输出 text_edited</small>
+                <p id="currentOutput"></p>
+              </div>
             </div>
-          </div>
-          <div class="action-strip">
-            <span id="currentAction">WAITING</span>
-            <span id="currentTags">-</span>
+            <div class="detail-box">
+              <small>修改详情</small>
+              <p id="currentDetails"></p>
+            </div>
+            <div class="action-strip">
+              <span id="currentAction">WAITING</span>
+              <span id="currentTags">-</span>
+            </div>
           </div>
         </section>
 

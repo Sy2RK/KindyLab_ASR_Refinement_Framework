@@ -56,7 +56,6 @@ button:disabled {
 .mast,
 .drop-panel,
 .telemetry-panel,
-.row-panel,
 .download-panel,
 .preview-panel {
   border: 1px solid var(--line);
@@ -111,7 +110,6 @@ h2 {
 
 .drop-panel,
 .telemetry-panel,
-.row-panel,
 .download-panel {
   padding: 16px;
 }
@@ -269,11 +267,18 @@ h2 {
 }
 
 .metric-grid small,
-.row-preview small {
+.row-preview small,
+.detail-box small {
   color: var(--muted);
   font-size: 12px;
   font-weight: 750;
   text-transform: uppercase;
+}
+
+.current-block {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
 }
 
 .panel-title code {
@@ -286,6 +291,7 @@ h2 {
 
 .row-preview {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 14px;
 }
@@ -302,6 +308,22 @@ h2 {
   min-height: 24px;
   margin: 8px 0 0;
   line-height: 1.55;
+  word-break: break-word;
+}
+
+.detail-box {
+  min-height: 74px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-soft);
+}
+
+.detail-box p {
+  min-height: 22px;
+  margin: 8px 0 0;
+  line-height: 1.5;
   word-break: break-word;
 }
 
@@ -396,7 +418,8 @@ tr.changed td {
   }
 
   .app-grid,
-  .metric-grid {
+  .metric-grid,
+  .row-preview {
     grid-template-columns: 1fr;
   }
 
