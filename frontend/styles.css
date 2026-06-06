@@ -55,7 +55,7 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(320px, 0.88fr) minmax(360px, 1.1fr) minmax(320px, 0.92fr);
   gap: 12px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .mast,
@@ -117,6 +117,8 @@ h2 {
 .drop-panel,
 .telemetry-panel,
 .download-panel {
+  min-height: 0;
+  height: 100%;
   padding: 14px;
 }
 
@@ -227,17 +229,17 @@ h2 {
 }
 
 .progress-top {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--muted);
 }
 
 .progress-top strong {
   color: var(--accent);
-  font-size: 30px;
+  font-size: 26px;
 }
 
 .progress-track {
-  height: 14px;
+  height: 10px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -254,12 +256,12 @@ h2 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .metric-grid div {
-  min-height: 70px;
-  padding: 10px;
+  min-height: 58px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--panel-soft);
@@ -268,64 +270,66 @@ h2 {
 .metric-grid span {
   display: block;
   color: var(--ink);
-  font-size: 24px;
+  font-size: 21px;
   font-weight: 850;
+  line-height: 1;
 }
 
 .metric-grid small,
 .row-preview small {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
   text-transform: uppercase;
 }
 
 .current-block {
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
 }
 
 .panel-title code {
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 9px;
+  padding: 4px 8px;
   color: var(--accent-strong);
   background: var(--accent-soft);
+  font-size: 12px;
 }
 
 .row-preview {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 8px;
 }
 
 .row-preview div {
-  min-height: 72px;
-  padding: 12px;
+  min-height: 58px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--panel-soft);
 }
 
 .row-preview p {
-  min-height: 24px;
-  margin: 8px 0 0;
-  font-size: 15px;
-  line-height: 1.45;
+  min-height: 20px;
+  margin: 5px 0 0;
+  font-size: 13.5px;
+  line-height: 1.35;
   word-break: break-word;
 }
 
 .action-strip {
-  margin-top: 12px;
+  margin-top: 8px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .action-strip span:first-child {
   border-radius: 999px;
-  padding: 5px 10px;
+  padding: 4px 9px;
   color: #fff;
   background: var(--warn);
   font-weight: 800;
@@ -335,6 +339,7 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  justify-content: space-between;
 }
 
 .changes-panel {
