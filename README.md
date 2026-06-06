@@ -65,7 +65,7 @@ python3 -m http.server 8787
 http://localhost:8787/frontend/
 ```
 
-前端支持拖入或手动选择 CSV、实时显示处理进度和当前行预览，并在页面底部预览原 CSV、输出 CSV 和质量报告。前端只在浏览器本地执行规则/词典清洗，不会上传文件，也不会在浏览器里调用 DeepSeek。需要 Flash/Pro LLM refinement 时继续使用 `python main.py --model flash` 或 `python main.py --model pro`。
+前端支持拖入或手动选择 CSV、Flash/Pro 模型切换、实时显示处理进度和当前行预览，并在页面底部预览原 CSV、输出 CSV 和质量报告。前端只在浏览器本地执行规则/词典清洗，不会上传文件，也不会在浏览器里调用 DeepSeek。需要 LLM refinement 时继续使用 `python main.py --model flash` 或 `python main.py --model pro`。
 
 前端逻辑测试：
 

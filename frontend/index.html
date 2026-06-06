@@ -20,9 +20,7 @@
         <section class="drop-panel" aria-label="上传 CSV">
           <label id="dropZone" class="drop-zone" for="fileInput">
             <input id="fileInput" type="file" accept=".csv,text/csv" />
-            <span class="drop-orbit" aria-hidden="true"></span>
             <span class="drop-title">拖入 CSV 或点击选择</span>
-            <span class="drop-copy">本地浏览器内处理，不上传文件，不暴露 DeepSeek Key。</span>
           </label>
 
           <div class="control-row">
@@ -36,6 +34,12 @@
             <label><input id="domainToggle" type="checkbox" checked /> 领域词典</label>
             <label><input id="punctuationToggle" type="checkbox" checked /> 保守标点</label>
             <label><input id="nameToggle" type="checkbox" /> 姓名别名</label>
+          </div>
+
+          <div class="model-switch" role="radiogroup" aria-label="模型切换">
+            <span>模型</span>
+            <button class="model-option active" data-model="deepseek-v4-flash" role="radio" aria-checked="true">Flash</button>
+            <button class="model-option" data-model="deepseek-v4-pro" role="radio" aria-checked="false">Pro</button>
           </div>
         </section>
 
@@ -63,11 +67,11 @@
           <div class="row-preview">
             <div>
               <small>原始 text_edited</small>
-              <p id="currentOriginal">尚未加载文件</p>
+              <p id="currentOriginal"></p>
             </div>
             <div>
               <small>输出 text_edited</small>
-              <p id="currentOutput">尚未生成输出</p>
+              <p id="currentOutput"></p>
             </div>
           </div>
           <div class="action-strip">
@@ -80,7 +84,6 @@
           <div>
             <p class="panel-kicker">输出</p>
             <h2>同格式 CSV + 质量报告</h2>
-            <p>页面端只执行规则、词典和候选识别；需要 DeepSeek Flash/Pro 时请继续使用 Python 主流程。</p>
           </div>
           <div class="download-actions">
             <button id="downloadCsvBtn" class="primary" disabled>下载清洗 CSV</button>
@@ -102,7 +105,7 @@
           </div>
         </div>
         <div id="tableWrap" class="table-wrap" tabindex="0">
-          <p class="empty-state">上传 CSV 后，这里会显示前 120 行预览。</p>
+          <p class="empty-state"></p>
         </div>
       </section>
     </main>

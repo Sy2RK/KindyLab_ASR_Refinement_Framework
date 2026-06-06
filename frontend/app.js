@@ -21,6 +21,21 @@
     "recognition_errors",
     "timestamp",
   ];
+  const REPORT_HEADERS = [
+    "row_id",
+    "audio_file",
+    "timestamp",
+    "label_type",
+    "original_text",
+    "final_text",
+    "action",
+    "issue_tags",
+    "used_llm",
+    "model_name",
+    "confidence",
+    "need_human_review",
+    "notes",
+  ];
 
   const IMMUTABLE_COLUMNS = [
     "annotator",
@@ -314,6 +329,7 @@
       action: classification.action,
       issue_tags: classification.tags.join("|"),
       used_llm: "false",
+      model_name: options.modelName || "deepseek-v4-flash",
       confidence: "",
       need_human_review: classification.needReview ? "true" : "false",
       notes: "",
@@ -365,6 +381,7 @@
       action: item.action,
       issue_tags: item.issue_tags,
       used_llm: item.used_llm,
+      model_name: item.model_name,
       confidence: item.confidence,
       need_human_review: item.need_human_review,
       notes: item.notes,
@@ -383,6 +400,7 @@
     const statusChip = document.getElementById("statusChip");
     const tableWrap = document.getElementById("tableWrap");
     const tabs = Array.from(document.querySelectorAll(".tab"));
+    const modelOptions = Array.from(document.querySelectorAll(".model-option"));
     const state = {
       headers: [],
       originalRows: [],
@@ -393,6 +411,7 @@
       processing: false,
       currentIndex: 0,
       filename: "output_cleaned.csv",
+      modelName: "deepseek-v4-flash",
       metrics: { changed: 0, skipped: 0, review: 0 },
     };
 
@@ -405,6 +424,7 @@
         punctuation: document.getElementById("punctuationToggle").checked,
         domain: document.getElementById("domainToggle").checked,
         names: document.getElementById("nameToggle").checked,
+        modelName: state.modelName,
       };
     }
 
@@ -508,8 +528,8 @@
     function updateCurrentPreview(payload) {
       if (!payload) {
         document.getElementById("currentRowId").textContent = "row_id: -";
-        document.getElementById("currentOriginal").textContent = state.originalRows.length ? "点击开始清洗后显示实时行内容" : "尚未加载文件";
-        document.getElementById("currentOutput").textContent = state.originalRows.length ? "等待处理" : "尚未生成输出";
+        document.getElementById("currentOriginal").textContent = "";
+        document.getElementById("currentOutput").textContent = "";
         document.getElementById("currentAction").textContent = "WAITING";
         document.getElementById("currentTags").textContent = "-";
         return;
@@ -523,9 +543,9 @@
 
     function renderPreview() {
       const rows = state.activeTab === "original" ? state.originalRows : state.activeTab === "output" ? state.outputRows : reportToRows(state.report.filter(Boolean));
-      const headers = state.activeTab === "report" ? ["row_id", "audio_file", "timestamp", "label_type", "original_text", "final_text", "action", "issue_tags", "used_llm", "confidence", "need_human_review", "notes"] : state.headers;
+      const headers = state.activeTab === "report" ? REPORT_HEADERS : state.headers;
       if (!rows.length) {
-        tableWrap.innerHTML = '<p class="empty-state">上传 CSV 后，这里会显示前 120 行预览。</p>';
+        tableWrap.innerHTML = '<p class="empty-state"></p>';
         return;
       }
       const previewRows = rows.slice(0, 120);
@@ -545,7 +565,7 @@
 
     function downloadCsv(kind) {
       const isReport = kind === "report";
-      const headers = isReport ? ["row_id", "audio_file", "timestamp", "label_type", "original_text", "final_text", "action", "issue_tags", "used_llm", "confidence", "need_human_review", "notes"] : state.headers;
+      const headers = isReport ? REPORT_HEADERS : state.headers;
       const rows = isReport ? reportToRows(state.report.filter(Boolean)) : state.outputRows;
       const csv = serializeCsv(headers, rows);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -621,6 +641,16 @@
         renderPreview();
       });
     });
+    modelOptions.forEach((button) => {
+      button.addEventListener("click", () => {
+        state.modelName = button.dataset.model;
+        modelOptions.forEach((item) => {
+          const isActive = item === button;
+          item.classList.toggle("active", isActive);
+          item.setAttribute("aria-checked", isActive ? "true" : "false");
+        });
+      });
+    });
     downloadCsvBtn.addEventListener("click", () => downloadCsv("output"));
     downloadReportBtn.addEventListener("click", () => downloadCsv("report"));
   }
@@ -650,5 +680,6 @@
     reportToRows,
     DEMO_ROWS,
     REQUIRED_COLUMNS,
+    REPORT_HEADERS,
   };
 });
