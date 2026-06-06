@@ -743,7 +743,7 @@
       state.metrics = emptyMetrics();
       setStatus("已加载");
       processBtn.disabled = rows.length === 0;
-      processBtn.textContent = "开始清洗";
+      processBtn.textContent = "开始本地预检";
       resetBtn.disabled = false;
       downloadCsvBtn.disabled = true;
       downloadReportBtn.disabled = true;
@@ -764,7 +764,7 @@
       state.outputRows = state.originalRows.map((row) => ({ ...row }));
       state.report = [];
       state.metrics = emptyMetrics();
-      setStatus("处理中");
+      setStatus("本地预检中");
       processBtn.disabled = true;
       pauseBtn.disabled = false;
       downloadCsvBtn.disabled = true;
@@ -778,7 +778,7 @@
       if (state.paused) {
         setStatus("已暂停");
         processBtn.disabled = false;
-        processBtn.textContent = "继续清洗";
+        processBtn.textContent = "继续预检";
         return;
       }
       const chunkSize = 90;
@@ -801,9 +801,9 @@
         setTimeout(processChunk, 10);
       } else {
         state.processing = false;
-        setStatus("完成");
+        setStatus("本地完成");
         processBtn.disabled = false;
-        processBtn.textContent = "重新清洗";
+        processBtn.textContent = "重新预检";
         pauseBtn.disabled = true;
         downloadCsvBtn.disabled = false;
         downloadReportBtn.disabled = false;
@@ -973,7 +973,7 @@
         processBtn.disabled = true;
         processChunk();
       } else {
-        processBtn.textContent = "开始清洗";
+        processBtn.textContent = "开始本地预检";
         startProcessing();
       }
     });
@@ -989,7 +989,7 @@
       state.paused = false;
       state.processing = false;
       processBtn.disabled = state.originalRows.length === 0;
-      processBtn.textContent = "开始清洗";
+      processBtn.textContent = "开始本地预检";
       pauseBtn.disabled = true;
       downloadCsvBtn.disabled = true;
       downloadReportBtn.disabled = true;

@@ -189,6 +189,15 @@ h2 {
   font-weight: 750;
 }
 
+.mode-badge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-size: 12px;
+}
+
 .primary,
 .ghost,
 .tab,

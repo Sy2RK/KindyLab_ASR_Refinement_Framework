@@ -24,7 +24,7 @@
           </label>
 
           <div class="control-row">
-            <button id="processBtn" class="primary" disabled>开始清洗</button>
+            <button id="processBtn" class="primary" disabled>开始本地预检</button>
             <button id="demoBtn" class="ghost">加载演示数据</button>
             <button id="pauseBtn" class="ghost" disabled>暂停</button>
             <button id="resetBtn" class="ghost" disabled>重置</button>
@@ -37,9 +37,10 @@
           </div>
 
           <div class="model-switch" role="radiogroup" aria-label="模型切换">
-            <span>模型</span>
+            <span>候选模型</span>
             <button class="model-option active" data-model="deepseek-v4-flash" role="radio" aria-checked="true">Flash</button>
             <button class="model-option" data-model="deepseek-v4-pro" role="radio" aria-checked="false">Pro</button>
+            <span class="mode-badge">本地预检</span>
           </div>
         </section>
 
@@ -97,10 +98,10 @@
         <section class="download-panel" aria-label="导出结果">
           <div>
             <p class="panel-kicker">输出</p>
-            <h2>同格式 CSV + 质量报告</h2>
+            <h2>本地预检 CSV + 质量报告</h2>
           </div>
           <div class="download-actions">
-            <button id="downloadCsvBtn" class="primary" disabled>下载清洗 CSV</button>
+            <button id="downloadCsvBtn" class="primary" disabled>下载预检 CSV</button>
             <button id="downloadReportBtn" class="ghost" disabled>下载质量报告</button>
           </div>
         </section>
