@@ -1,0 +1,19 @@
+# 默认不启用姓名修正，避免在没有班级名单时猜测儿童姓名。
+# 使用方式：确认班级名单后，把 enabled 改为 true 或追加新 alias。
+aliases:
+  - wrong: 小鸡
+    correct: 小纪
+    type: 姓名修正
+    reason: 班级名单确认后可启用
+    enabled: false
+  - wrong: 第一
+    correct: 一一
+    type: 姓名修正
+    reason: 班级名单确认后可启用
+    enabled: false
+  - wrong: 叔叔
+    correct: 书书
+    type: 姓名修正
+    reason: 班级名单确认后可启用
+    enabled: false
+

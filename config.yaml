@@ -1,0 +1,80 @@
+model:
+  provider: deepseek
+  model_name: deepseek-v4-flash
+  api_base: https://api.deepseek.com
+  api_key_env: DEEPSEEK_API_KEY
+  model_aliases:
+    flash: deepseek-v4-flash
+    pro: deepseek-v4-pro
+  batch_size: 30
+  timeout: 60
+  max_retries: 3
+  temperature: 0
+
+paths:
+  input_csv: samples/sample_input.csv
+  output_csv: outputs/output_cleaned.csv
+  quality_report: outputs/quality_report.csv
+  llm_cache: outputs/llm_cache.json
+  llm_log: outputs/llm_calls.jsonl
+  env_file: .env
+
+columns:
+  text_column: text_edited
+  error_column: recognition_errors
+
+rules:
+  skip_empty_text: true
+  skip_short_text: true
+  short_text_max_length: 4
+  enable_punctuation_fix: true
+  enable_domain_dictionary: true
+  enable_correction_dictionary: true
+  enable_name_dictionary: true
+  add_terminal_punctuation: true
+
+dictionaries:
+  domain_terms: dictionaries/domain_terms.yaml
+  name_aliases: dictionaries/name_aliases.yaml
+  correction_map: dictionaries/correction_map.yaml
+
+classifier:
+  hallucination_student_length: 140
+  segment_too_long_length: 220
+  media_keywords:
+    - 儿歌
+    - 动画片
+    - 播放
+    - 歌词
+    - 广播
+    - 音频
+    - 音乐
+    - 故事机
+    - 火箭发射
+    - 即将关闭
+    - 谨防夹伤
+
+selector:
+  min_text_length: 12
+  max_text_length: 220
+  max_llm_row_ratio: 0.25
+  blocked_issue_tags:
+    - EMPTY_TEXT
+    - SHORT_BACKCHANNEL
+    - NOISE_ONLY
+    - MEDIA_MATERIAL
+    - MULTI_SPEAKER_OVERLAP
+    - HALLUCINATION_RISK
+    - NEEDS_HUMAN_REVIEW
+
+guard:
+  max_added_ratio: 0.2
+  max_deleted_ratio: 0.3
+  max_edit_distance_ratio: 0.4
+  min_confidence: 0.7
+
+llm:
+  enable: true
+  conservative_mode: true
+  prompt_file: prompts/conservative_refinement_prompt.txt
+  cache_enabled: true

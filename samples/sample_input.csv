@@ -1,0 +1,4 @@
+﻿annotator,source_file,audio_file,label,label_display,label_type,teacher_id,text_edited,recognition_errors,timestamp
+demo,中一班_区域活动_demo,000001.wav,teacher_1,T1,teacher,1,  我在金木区吗  ,,2026-06-06 20:00:00
+demo,中一班_区域活动_demo,000002.wav,student,学生,student,,嗯,,2026-06-06 20:00:02
+demo,中一班_区域活动_demo,000003.wav,teacher_1,T1,teacher,1,这个地结构材料可以怎么玩,,2026-06-06 20:00:04

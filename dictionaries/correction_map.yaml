@@ -1,0 +1,21 @@
+corrections:
+  - wrong: 垫脚
+    correct: 踮脚
+    type: 常见错词修正
+    reason: 动作词近音误识别
+  - wrong: 插座子
+    correct: 擦桌子
+    type: 常见错词修正
+    reason: 课堂劳动场景近音误识别
+  - wrong: 金木
+    correct: 积木
+    type: 常见错词修正
+    reason: 活动材料近音误识别
+  - wrong: 排对
+    correct: 排队
+    type: 常见错词修正
+    reason: 课堂常用指令错字
+  - wrong: 收才料
+    correct: 收材料
+    type: 常见错词修正
+    reason: 课堂常用指令错字

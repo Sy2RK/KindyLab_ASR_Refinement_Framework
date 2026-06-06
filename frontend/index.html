@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KindyLab ASR Refinement Console</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="app-grid" aria-label="ASR CSV 清洗控制台">
+        <header class="mast">
+          <div>
+            <p class="eyebrow">KindyLab / ASR Refinement</p>
+            <h1>课堂语料清洗控制台</h1>
+          </div>
+          <div class="status-chip" id="statusChip">等待 CSV</div>
+        </header>
+
+        <section class="drop-panel" aria-label="上传 CSV">
+          <label id="dropZone" class="drop-zone" for="fileInput">
+            <input id="fileInput" type="file" accept=".csv,text/csv" />
+            <span class="drop-orbit" aria-hidden="true"></span>
+            <span class="drop-title">拖入 CSV 或点击选择</span>
+            <span class="drop-copy">本地浏览器内处理，不上传文件，不暴露 DeepSeek Key。</span>
+          </label>
+
+          <div class="control-row">
+            <button id="processBtn" class="primary" disabled>开始清洗</button>
+            <button id="demoBtn" class="ghost">加载演示数据</button>
+            <button id="pauseBtn" class="ghost" disabled>暂停</button>
+            <button id="resetBtn" class="ghost" disabled>重置</button>
+          </div>
+
+          <div class="switch-row" role="group" aria-label="处理选项">
+            <label><input id="domainToggle" type="checkbox" checked /> 领域词典</label>
+            <label><input id="punctuationToggle" type="checkbox" checked /> 保守标点</label>
+            <label><input id="nameToggle" type="checkbox" /> 姓名别名</label>
+          </div>
+        </section>
+
+        <section class="telemetry-panel" aria-label="处理进度">
+          <div class="progress-top">
+            <span id="progressLabel">0 / 0 行</span>
+            <strong id="progressPercent">0%</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div class="metric-grid" aria-label="统计指标">
+            <div><span id="totalRows">0</span><small>总行数</small></div>
+            <div><span id="changedRows">0</span><small>已修改</small></div>
+            <div><span id="skippedRows">0</span><small>已跳过</small></div>
+            <div><span id="reviewRows">0</span><small>需复核</small></div>
+          </div>
+        </section>
+
+        <section class="row-panel" aria-label="当前处理行预览">
+          <div class="panel-title">
+            <span>当前行</span>
+            <code id="currentRowId">row_id: -</code>
+          </div>
+          <div class="row-preview">
+            <div>
+              <small>原始 text_edited</small>
+              <p id="currentOriginal">尚未加载文件</p>
+            </div>
+            <div>
+              <small>输出 text_edited</small>
+              <p id="currentOutput">尚未生成输出</p>
+            </div>
+          </div>
+          <div class="action-strip">
+            <span id="currentAction">WAITING</span>
+            <span id="currentTags">-</span>
+          </div>
+        </section>
+
+        <section class="download-panel" aria-label="导出结果">
+          <div>
+            <p class="panel-kicker">输出</p>
+            <h2>同格式 CSV + 质量报告</h2>
+            <p>页面端只执行规则、词典和候选识别；需要 DeepSeek Flash/Pro 时请继续使用 Python 主流程。</p>
+          </div>
+          <div class="download-actions">
+            <button id="downloadCsvBtn" class="primary" disabled>下载清洗 CSV</button>
+            <button id="downloadReportBtn" class="ghost" disabled>下载质量报告</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="preview-panel" aria-label="CSV 预览">
+        <div class="preview-head">
+          <div>
+            <p class="eyebrow">Preview Dock</p>
+            <h2>原 CSV / 输出 CSV 预览</h2>
+          </div>
+          <div class="tabs" role="tablist" aria-label="预览切换">
+            <button class="tab active" data-tab="original" role="tab" aria-selected="true">原 CSV</button>
+            <button class="tab" data-tab="output" role="tab" aria-selected="false">输出 CSV</button>
+            <button class="tab" data-tab="report" role="tab" aria-selected="false">质量报告</button>
+          </div>
+        </div>
+        <div id="tableWrap" class="table-wrap" tabindex="0">
+          <p class="empty-state">上传 CSV 后，这里会显示前 120 行预览。</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

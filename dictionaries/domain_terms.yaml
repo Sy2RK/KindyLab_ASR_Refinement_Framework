@@ -1,0 +1,50 @@
+corrections:
+  - wrong: 地结构材料
+    correct: 低结构材料
+    type: 领域词修正
+    reason: 幼儿园材料术语
+  - wrong: 低节构材料
+    correct: 低结构材料
+    type: 领域词修正
+    reason: 幼儿园材料术语
+  - wrong: 低结构的材料
+    correct: 低结构材料
+    type: 领域词修正
+    reason: 幼儿园材料术语规范
+  - wrong: 纸今筒
+    correct: 纸巾筒
+    type: 领域词修正
+    reason: 活动材料术语
+  - wrong: 只今筒
+    correct: 纸巾筒
+    type: 领域词修正
+    reason: 活动材料术语
+  - wrong: 建构去
+    correct: 建构区
+    type: 领域词修正
+    reason: 区域活动名称
+  - wrong: 美工去
+    correct: 美工区
+    type: 领域词修正
+    reason: 区域活动名称
+  - wrong: 语言去
+    correct: 语言区
+    type: 领域词修正
+    reason: 区域活动名称
+  - wrong: 科学去
+    correct: 科学区
+    type: 领域词修正
+    reason: 区域活动名称
+  - wrong: 泥巴去
+    correct: 泥巴区
+    type: 领域词修正
+    reason: 区域活动名称
+  - wrong: 小木庄
+    correct: 小木桩
+    type: 领域词修正
+    reason: 活动材料术语
+  - wrong: 小木装
+    correct: 小木桩
+    type: 领域词修正
+    reason: 活动材料术语
+
