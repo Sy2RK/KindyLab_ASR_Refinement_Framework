@@ -42,6 +42,12 @@ const unchangedReport = {
   row_id: 2,
   original_text: "嗯",
   final_text: "嗯",
+  sop_label: "0",
+  error_types: "",
+  primary_error_type: "",
+  llm_policy: "KEEP",
+  selector_reason: "",
+  selection_score: "",
   notes: "",
 };
 const modifiedRows = app.modifiedReportRows([result.report, unchangedReport]);
@@ -76,6 +82,12 @@ const mustDecision = app.processRow(
 assert.equal(mustDecision.report.sop_label, "2");
 assert.equal(mustDecision.report.primary_error_type, "E1");
 assert.equal(mustDecision.report.llm_policy, "MUST_LLM");
+assert.equal(mustDecision.changed, false);
+
+const policyRows = app.policyHitRows([result.report, unchangedReport, mustDecision.report]);
+assert.equal(policyRows.length, 2);
+assert.equal(policyRows[0].row_id, "3");
+assert.equal(policyRows[0].llm_policy, "MUST_LLM");
 
 const overlap = app.processRow(
   {

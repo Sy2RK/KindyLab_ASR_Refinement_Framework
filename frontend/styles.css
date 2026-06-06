@@ -63,6 +63,7 @@ button:disabled {
 .telemetry-panel,
 .download-panel,
 .changes-panel,
+.rules-panel,
 .preview-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -382,12 +383,14 @@ h2 {
   justify-content: space-between;
 }
 
-.changes-panel {
+.changes-panel,
+.rules-panel {
   margin-top: 12px;
   overflow: hidden;
 }
 
-.changes-head {
+.changes-head,
+.rules-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -396,7 +399,8 @@ h2 {
   border-bottom: 1px solid var(--line);
 }
 
-.changes-head span {
+.changes-head span,
+.rules-head span {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 10px;
@@ -406,11 +410,64 @@ h2 {
   font-weight: 800;
 }
 
-.changes-wrap {
+.changes-wrap,
+.policy-wrap {
   min-height: 116px;
   max-height: 360px;
   overflow: auto;
   background: var(--panel);
+}
+
+.policy-item {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.42fr) 1fr;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.policy-item:last-child {
+  border-bottom: 0;
+}
+
+.policy-meta {
+  display: flex;
+  align-content: start;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.policy-meta code,
+.policy-badge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--panel-soft);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.policy-badge.policy-hot {
+  border-color: #d8b08a;
+  color: #7d4716;
+  background: #fff6ec;
+}
+
+.policy-text p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.policy-text small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .diff-item {
@@ -565,7 +622,8 @@ tr.changed td {
   .metric-grid,
   .policy-summary,
   .row-preview,
-  .diff-grid {
+  .diff-grid,
+  .policy-item {
     grid-template-columns: 1fr;
   }
 
@@ -576,7 +634,8 @@ tr.changed td {
 
   .mast,
   .preview-head,
-  .changes-head {
+  .changes-head,
+  .rules-head {
     align-items: start;
     flex-direction: column;
   }

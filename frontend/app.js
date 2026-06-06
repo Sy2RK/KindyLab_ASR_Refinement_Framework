@@ -60,6 +60,14 @@
   const QUESTION_WORDS = ["什么", "哪里", "哪儿", "几", "怎么", "为什么", "谁"];
   const MEDIA_KEYWORDS = ["儿歌", "动画片", "播放", "歌词", "广播", "音频", "音乐", "故事机", "火箭发射", "即将关闭", "谨防夹伤"];
   const ERROR_TYPE_PRIORITY = ["E7", "E6", "E2", "E1", "E3", "E4", "E5", "E8"];
+  const POLICY_PRIORITY = {
+    HUMAN_REVIEW_ONLY: 5,
+    LLM_CAP_EXCEEDED: 4,
+    MUST_LLM: 3,
+    OPTIONAL_LLM: 2,
+    RULE_ONLY: 1,
+    KEEP: 0,
+  };
   const ERROR_TYPE_TAGS = {
     E1: "DOMAIN_TERM_ERROR",
     E2: "CHILD_UNCLEAR",
@@ -610,6 +618,40 @@
     return reportToRows(report).filter((item) => item.original_text !== item.final_text);
   }
 
+  function policyHitRows(report) {
+    return reportToRows(report)
+      .filter((item) => {
+        const policy = item.llm_policy || "KEEP";
+        return item.sop_label !== "0" || Boolean(item.error_types) || !["KEEP", "RULE_ONLY"].includes(policy);
+      })
+      .sort(comparePolicyRows);
+  }
+
+  function comparePolicyRows(left, right) {
+    const leftPolicy = POLICY_PRIORITY[left.llm_policy] || 0;
+    const rightPolicy = POLICY_PRIORITY[right.llm_policy] || 0;
+    if (leftPolicy !== rightPolicy) {
+      return rightPolicy - leftPolicy;
+    }
+    const leftError = errorPriorityIndex(left.primary_error_type || firstErrorType(left.error_types));
+    const rightError = errorPriorityIndex(right.primary_error_type || firstErrorType(right.error_types));
+    if (leftError !== rightError) {
+      return leftError - rightError;
+    }
+    return Number(left.row_id || 0) - Number(right.row_id || 0);
+  }
+
+  function firstErrorType(value) {
+    return String(value || "")
+      .split("|")
+      .filter(Boolean)[0] || "";
+  }
+
+  function errorPriorityIndex(value) {
+    const index = ERROR_TYPE_PRIORITY.indexOf(value);
+    return index === -1 ? ERROR_TYPE_PRIORITY.length : index;
+  }
+
   function emptyMetrics() {
     return { changed: 0, skipped: 0, review: 0, labels: {}, errors: {} };
   }
@@ -645,6 +687,8 @@
     const tableWrap = document.getElementById("tableWrap");
     const changesWrap = document.getElementById("changesWrap");
     const modifiedCount = document.getElementById("modifiedCount");
+    const policyWrap = document.getElementById("policyWrap");
+    const policyCount = document.getElementById("policyCount");
     const tabs = Array.from(document.querySelectorAll(".tab"));
     const modelOptions = Array.from(document.querySelectorAll(".model-option"));
     const state = {
@@ -706,6 +750,7 @@
       updateProgress(0, rows.length);
       updateCurrentPreview(null);
       renderChanges();
+      renderPolicyHits();
       renderPreview();
     }
 
@@ -725,6 +770,7 @@
       downloadCsvBtn.disabled = true;
       downloadReportBtn.disabled = true;
       renderChanges();
+      renderPolicyHits();
       processChunk();
     }
 
@@ -750,6 +796,7 @@
       state.currentIndex = end;
       updateProgress(state.currentIndex, state.originalRows.length);
       renderChanges();
+      renderPolicyHits();
       if (state.currentIndex < state.originalRows.length) {
         setTimeout(processChunk, 10);
       } else {
@@ -761,6 +808,7 @@
         downloadCsvBtn.disabled = false;
         downloadReportBtn.disabled = false;
         renderChanges();
+        renderPolicyHits();
         renderPreview();
       }
     }
@@ -825,6 +873,38 @@
             </article>
           `
         )
+        .join("");
+    }
+
+    function renderPolicyHits() {
+      const rows = policyHitRows(state.report.filter(Boolean));
+      policyCount.textContent = `${rows.length} 条`;
+      if (!rows.length) {
+        policyWrap.innerHTML = '<p class="empty-state"></p>';
+        return;
+      }
+      policyWrap.innerHTML = rows
+        .map((row) => {
+          const hot = ["HUMAN_REVIEW_ONLY", "LLM_CAP_EXCEEDED", "MUST_LLM"].includes(row.llm_policy);
+          const outputLine = row.original_text !== row.final_text ? `<small>输出：${escapeHtml(row.final_text || "(空文本)")}</small>` : "";
+          const reason = [row.selector_reason, row.notes].filter(Boolean).join("；");
+          return `
+            <article class="policy-item">
+              <div class="policy-meta">
+                <code>row_id: ${escapeHtml(row.row_id)}</code>
+                <span class="policy-badge ${hot ? "policy-hot" : ""}">Label ${escapeHtml(row.sop_label || "-")}</span>
+                <span class="policy-badge ${hot ? "policy-hot" : ""}">${escapeHtml(row.llm_policy || "-")}</span>
+                <span class="policy-badge">${escapeHtml(row.error_types || "-")}</span>
+                <span class="policy-badge">${escapeHtml(row.action || "-")}</span>
+              </div>
+              <div class="policy-text">
+                <p>${escapeHtml(row.original_text || "(空文本)")}</p>
+                ${outputLine}
+                <small>${escapeHtml(reason)}</small>
+              </div>
+            </article>
+          `;
+        })
         .join("");
     }
 
@@ -917,6 +997,7 @@
       updateProgress(0, state.originalRows.length);
       updateCurrentPreview(null);
       renderChanges();
+      renderPolicyHits();
       renderPreview();
     });
     tabs.forEach((tab) => {
@@ -969,6 +1050,7 @@
     processRow,
     reportToRows,
     modifiedReportRows,
+    policyHitRows,
     emptyMetrics,
     DEMO_ROWS,
     REQUIRED_COLUMNS,
