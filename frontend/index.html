@@ -73,10 +73,6 @@
                 <p id="currentOutput"></p>
               </div>
             </div>
-            <div class="detail-box">
-              <small>修改详情</small>
-              <p id="currentDetails"></p>
-            </div>
             <div class="action-strip">
               <span id="currentAction">WAITING</span>
               <span id="currentTags">-</span>
@@ -94,6 +90,19 @@
             <button id="downloadReportBtn" class="ghost" disabled>下载质量报告</button>
           </div>
         </section>
+      </section>
+
+      <section class="changes-panel" aria-label="修改详情">
+        <div class="changes-head">
+          <div>
+            <p class="panel-kicker">修改详情</p>
+            <h2>已修改条目</h2>
+          </div>
+          <span id="modifiedCount">0 条</span>
+        </div>
+        <div id="changesWrap" class="changes-wrap">
+          <p class="empty-state"></p>
+        </div>
       </section>
 
       <section class="preview-panel" aria-label="CSV 预览">

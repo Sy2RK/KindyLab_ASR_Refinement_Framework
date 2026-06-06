@@ -34,6 +34,17 @@ assert.match(result.row.recognition_errors, /金木->积木\[常见错词修正\
 assert.equal(result.report.action, "DICT_FIXED");
 assert.equal(result.report.model_name, "deepseek-v4-pro");
 
+const unchangedReport = {
+  ...result.report,
+  row_id: 2,
+  original_text: "嗯",
+  final_text: "嗯",
+  notes: "",
+};
+const modifiedRows = app.modifiedReportRows([result.report, unchangedReport]);
+assert.equal(modifiedRows.length, 1);
+assert.equal(modifiedRows[0].row_id, "1");
+
 const outputCsv = app.serializeCsv(headers, [result.row]);
 const outputParsed = app.parseCsv(outputCsv);
 assert.deepEqual(outputParsed.headers, headers);

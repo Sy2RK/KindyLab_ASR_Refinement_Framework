@@ -388,6 +388,10 @@
     }));
   }
 
+  function modifiedReportRows(report) {
+    return reportToRows(report).filter((item) => item.original_text !== item.final_text);
+  }
+
   function initBrowserApp() {
     const fileInput = document.getElementById("fileInput");
     const dropZone = document.getElementById("dropZone");
@@ -399,6 +403,8 @@
     const downloadReportBtn = document.getElementById("downloadReportBtn");
     const statusChip = document.getElementById("statusChip");
     const tableWrap = document.getElementById("tableWrap");
+    const changesWrap = document.getElementById("changesWrap");
+    const modifiedCount = document.getElementById("modifiedCount");
     const tabs = Array.from(document.querySelectorAll(".tab"));
     const modelOptions = Array.from(document.querySelectorAll(".model-option"));
     const state = {
@@ -459,6 +465,7 @@
       downloadReportBtn.disabled = true;
       updateProgress(0, rows.length);
       updateCurrentPreview(null);
+      renderChanges();
       renderPreview();
     }
 
@@ -477,6 +484,7 @@
       pauseBtn.disabled = false;
       downloadCsvBtn.disabled = true;
       downloadReportBtn.disabled = true;
+      renderChanges();
       processChunk();
     }
 
@@ -500,6 +508,7 @@
       }
       state.currentIndex = end;
       updateProgress(state.currentIndex, state.originalRows.length);
+      renderChanges();
       if (state.currentIndex < state.originalRows.length) {
         setTimeout(processChunk, 10);
       } else {
@@ -510,6 +519,7 @@
         pauseBtn.disabled = true;
         downloadCsvBtn.disabled = false;
         downloadReportBtn.disabled = false;
+        renderChanges();
         renderPreview();
       }
     }
@@ -530,7 +540,6 @@
         document.getElementById("currentRowId").textContent = "row_id: -";
         document.getElementById("currentOriginal").textContent = "";
         document.getElementById("currentOutput").textContent = "";
-        document.getElementById("currentDetails").textContent = "";
         document.getElementById("currentAction").textContent = "WAITING";
         document.getElementById("currentTags").textContent = "-";
         return;
@@ -538,9 +547,35 @@
       document.getElementById("currentRowId").textContent = `row_id: ${payload.index + 1}`;
       document.getElementById("currentOriginal").textContent = payload.original.text_edited || "(空文本)";
       document.getElementById("currentOutput").textContent = payload.output.text_edited || "(空文本)";
-      document.getElementById("currentDetails").textContent = payload.report.notes || payload.output.recognition_errors || "";
       document.getElementById("currentAction").textContent = payload.report.action;
       document.getElementById("currentTags").textContent = payload.report.issue_tags || "-";
+    }
+
+    function renderChanges() {
+      const changedRows = modifiedReportRows(state.report.filter(Boolean));
+      modifiedCount.textContent = `${changedRows.length} 条`;
+      if (!changedRows.length) {
+        changesWrap.innerHTML = '<p class="empty-state"></p>';
+        return;
+      }
+      changesWrap.innerHTML = changedRows
+        .map(
+          (row) => `
+            <article class="diff-item">
+              <div class="diff-meta">
+                <code>row_id: ${escapeHtml(row.row_id)}</code>
+                <span>${escapeHtml(row.audio_file || "")}</span>
+                <span>${escapeHtml(row.action || "")}</span>
+              </div>
+              <div class="diff-grid">
+                <pre class="diff-before"><span>-</span>${escapeHtml(row.original_text || "(空文本)")}</pre>
+                <pre class="diff-after"><span>+</span>${escapeHtml(row.final_text || "(空文本)")}</pre>
+              </div>
+              <p class="diff-notes">${escapeHtml(row.notes || "")}</p>
+            </article>
+          `
+        )
+        .join("");
     }
 
     function renderPreview() {
@@ -631,6 +666,7 @@
       setStatus(state.originalRows.length ? "已重置" : "等待 CSV");
       updateProgress(0, state.originalRows.length);
       updateCurrentPreview(null);
+      renderChanges();
       renderPreview();
     });
     tabs.forEach((tab) => {
@@ -680,6 +716,7 @@
     applyDictionary,
     processRow,
     reportToRows,
+    modifiedReportRows,
     DEMO_ROWS,
     REQUIRED_COLUMNS,
     REPORT_HEADERS,
