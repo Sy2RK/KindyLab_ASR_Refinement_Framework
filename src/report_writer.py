@@ -12,6 +12,13 @@ REPORT_FIELDS = [
     "label_type",
     "original_text",
     "final_text",
+    "sop_label",
+    "error_types",
+    "primary_error_type",
+    "llm_policy",
+    "selector_reason",
+    "selection_score",
+    "guard_decision",
     "action",
     "issue_tags",
     "used_llm",
@@ -29,6 +36,13 @@ class ReportRow:
     label_type: str
     original_text: str
     final_text: str
+    sop_label: str = "0"
+    error_types: set[str] = field(default_factory=set)
+    primary_error_type: str = ""
+    llm_policy: str = "KEEP"
+    selector_reason: str = ""
+    selection_score: str = ""
+    guard_decision: str = ""
     action: str = "UNCHANGED"
     issue_tags: set[str] = field(default_factory=set)
     used_llm: bool = False
@@ -44,6 +58,13 @@ class ReportRow:
             "label_type": self.label_type,
             "original_text": self.original_text,
             "final_text": self.final_text,
+            "sop_label": self.sop_label,
+            "error_types": "|".join(sorted(self.error_types)),
+            "primary_error_type": self.primary_error_type,
+            "llm_policy": self.llm_policy,
+            "selector_reason": self.selector_reason,
+            "selection_score": self.selection_score,
+            "guard_decision": self.guard_decision,
             "action": self.action,
             "issue_tags": "|".join(sorted(self.issue_tags)),
             "used_llm": "true" if self.used_llm else "false",
@@ -61,4 +82,3 @@ def write_quality_report(path: str | Path, rows: list[ReportRow]) -> None:
         writer.writeheader()
         for row in rows:
             writer.writerow(row.to_csv_row())
-

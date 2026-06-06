@@ -116,7 +116,17 @@ class DeepSeekClient:
         return []
 
     def _request_payload(self, batch: list[LLMCandidate]) -> dict[str, Any]:
-        rows = [{"row_id": item.row_id, "text": item.text} for item in batch]
+        rows = [
+            {
+                "row_id": item.row_id,
+                "text": item.text,
+                "sop_label": item.sop_label,
+                "error_types": sorted(item.error_types),
+                "primary_error_type": item.primary_error_type,
+                "llm_policy": item.llm_policy,
+            }
+            for item in batch
+        ]
         return {
             "model": self.model_name,
             "temperature": self.temperature,
@@ -124,7 +134,7 @@ class DeepSeekClient:
                 {"role": "system", "content": self.prompt},
                 {
                     "role": "user",
-                    "content": "请按要求保守清洗以下 ASR 文本，输出严格 JSON 数组：\n"
+                    "content": "请按要求保守清洗以下 ASR 文本。sop_label 和 error_types 只用于理解候选来源，不代表可以扩写、补全或恢复音频缺失内容。输出严格 JSON 数组：\n"
                     + json.dumps(rows, ensure_ascii=False),
                 },
             ],
@@ -241,6 +251,18 @@ class DeepSeekClient:
         record = {
             "model": self.model_name,
             "row_ids": [item.row_id for item in batch],
+            "candidates": [
+                {
+                    "row_id": item.row_id,
+                    "sop_label": item.sop_label,
+                    "error_types": sorted(item.error_types),
+                    "primary_error_type": item.primary_error_type,
+                    "llm_policy": item.llm_policy,
+                    "selection_score": item.selection_score,
+                    "reason": item.reason,
+                }
+                for item in batch
+            ],
             "success": success,
             "usage": usage,
             "error": error,

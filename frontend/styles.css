@@ -259,7 +259,8 @@ h2 {
   margin-top: 8px;
 }
 
-.metric-grid div {
+.metric-grid div,
+.policy-summary div {
   min-height: 58px;
   padding: 8px 10px;
   border: 1px solid var(--line);
@@ -276,11 +277,33 @@ h2 {
 }
 
 .metric-grid small,
-.row-preview small {
+.row-preview small,
+.policy-summary small {
   color: var(--muted);
   font-size: 11px;
   font-weight: 750;
   text-transform: uppercase;
+}
+
+.policy-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.policy-summary div {
+  min-height: 48px;
+}
+
+.policy-summary span {
+  display: block;
+  margin-top: 4px;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .current-block {
@@ -325,6 +348,23 @@ h2 {
   margin-top: 8px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.policy-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.policy-strip span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: var(--accent-soft);
 }
 
 .action-strip span:first-child {
@@ -523,6 +563,7 @@ tr.changed td {
 
   .app-grid,
   .metric-grid,
+  .policy-summary,
   .row-preview,
   .diff-grid {
     grid-template-columns: 1fr;

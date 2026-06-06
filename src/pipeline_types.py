@@ -39,11 +39,37 @@ class SegmentClassification:
 
 
 @dataclass
+class ErrorTypeAnalysis:
+    error_types: set[str] = field(default_factory=set)
+    primary_error_type: str = ""
+    issue_tags: set[str] = field(default_factory=set)
+    notes: list[str] = field(default_factory=list)
+    severity: int = 0
+
+
+@dataclass
+class CandidatePolicyDecision:
+    row_id: int
+    sop_label: str
+    error_types: set[str] = field(default_factory=set)
+    primary_error_type: str = ""
+    llm_policy: str = "KEEP"
+    selector_reason: str = ""
+    selection_score: float = 0.0
+    candidate: "LLMCandidate | None" = None
+
+
+@dataclass
 class LLMCandidate:
     row_id: int
     text: str
     score: float
     reason: str
+    sop_label: str = "1"
+    error_types: set[str] = field(default_factory=set)
+    primary_error_type: str = ""
+    llm_policy: str = "OPTIONAL_LLM"
+    selection_score: float = 0.0
 
 
 @dataclass
@@ -60,4 +86,3 @@ class GuardDecision:
     accepted: bool
     reason: str
     issue_tags: set[str] = field(default_factory=set)
-

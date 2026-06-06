@@ -9,10 +9,11 @@ from src.config import get_api_key, load_config, load_env_file, resolve_model_al
 from src.csv_io import CsvData, read_csv, write_csv
 from src.deepseek_client import DeepSeekClient
 from src.dictionary_corrector import DictionaryCorrector
+from src.error_type_detector import ErrorTypeDetector
 from src.error_notes import merge_error_notes
-from src.llm_selector import LLMSelector
+from src.llm_selector import CandidatePolicySelector
 from src.metrics import Metrics
-from src.pipeline_types import LLMCandidate, SegmentClassification
+from src.pipeline_types import CandidatePolicyDecision, LLMCandidate
 from src.refinement_guard import RefinementGuard
 from src.report_writer import ReportRow, write_quality_report
 from src.rule_cleaner import RuleCleaner
@@ -91,12 +92,13 @@ def run_pipeline(config: dict[str, Any], project_root: Path) -> dict[str, Any]:
     classifier = SegmentValueClassifier(config)
     rule_cleaner = RuleCleaner(config)
     dictionaries = build_dictionaries(config, project_root)
-    selector = LLMSelector(config)
+    error_detector = ErrorTypeDetector(config, project_root)
+    selector = CandidatePolicySelector(config)
     guard = RefinementGuard(config)
 
     reports: list[ReportRow] = []
     candidate_map: dict[int, LLMCandidate] = {}
-    classification_map: dict[int, SegmentClassification] = {}
+    decision_map: dict[int, CandidatePolicyDecision] = {}
 
     for row_id, row in enumerate(output_rows, start=1):
         original_text = row.get(text_column, "") or ""
@@ -109,16 +111,24 @@ def run_pipeline(config: dict[str, Any], project_root: Path) -> dict[str, Any]:
             final_text=original_text,
         )
         classification = classifier.classify(row, text_column)
-        classification_map[row_id] = classification
         report.issue_tags.update(classification.issue_tags)
         report.need_human_review = classification.need_human_review
         report.notes.extend(classification.notes)
+        error_analysis = error_detector.detect(row, original_text, classification, error_column)
+        report.issue_tags.update(error_analysis.issue_tags)
+        report.notes.extend(error_analysis.notes)
 
         if classification.skip_all_cleaning:
+            decision = selector.assess(row_id, row, original_text, original_text, classification, error_analysis, False)
+            decision_map[row_id] = decision
+            apply_candidate_decision(report, decision)
             report.action = "SKIP"
             reports.append(report)
             metrics.inc("skipped_rows")
+            record_policy_metrics(metrics, decision)
             for tag in classification.issue_tags:
+                metrics.inc(f"tag_{tag}")
+            for tag in error_analysis.issue_tags:
                 metrics.inc(f"tag_{tag}")
             continue
 
@@ -148,15 +158,25 @@ def run_pipeline(config: dict[str, Any], project_root: Path) -> dict[str, Any]:
         if report.action == "UNCHANGED" and current_text == original_text:
             metrics.inc("unchanged_rows")
 
-        candidate = selector.assess(row_id, row, current_text, classification, changed_by_rules)
-        if candidate:
-            candidate_map[row_id] = candidate
+        decision = selector.assess(row_id, row, original_text, current_text, classification, error_analysis, changed_by_rules)
+        decision_map[row_id] = decision
+        apply_candidate_decision(report, decision)
+        if decision.llm_policy == "HUMAN_REVIEW_ONLY":
+            report.need_human_review = True
+            report.issue_tags.add("NEEDS_HUMAN_REVIEW")
+            set_action(report, "HUMAN_REVIEW_REQUIRED")
+        if decision.candidate:
+            candidate_map[row_id] = decision.candidate
+        record_policy_metrics(metrics, decision)
 
         for tag in classification.issue_tags:
             metrics.inc(f"tag_{tag}")
+        for tag in error_analysis.issue_tags:
+            metrics.inc(f"tag_{tag}")
         reports.append(report)
 
-    selected_candidates = selector.cap_candidates(len(output_rows), list(candidate_map.values()))
+    selected_candidates, capped_candidates = selector.cap_candidates(len(output_rows), list(candidate_map.values()))
+    mark_capped_candidates(capped_candidates, reports, decision_map, metrics, selector.llm_cap_exceeded_action)
     llm_enabled = bool(config.get("llm", {}).get("enable", True))
     api_key = get_api_key(config)
     if llm_enabled and api_key and selected_candidates:
@@ -274,6 +294,7 @@ def run_llm_refinement(
             continue
         report.confidence = f"{refinement.confidence:.2f}"
         decision = guard.evaluate(candidate.text, refinement.refined_text, refinement.confidence)
+        report.guard_decision = decision.reason
         if decision.accepted:
             row = output_rows[row_id - 1]
             if refinement.refined_text != row.get(text_column, ""):
@@ -295,6 +316,46 @@ def run_llm_refinement(
 def set_action(report: ReportRow, action: str) -> None:
     if ACTION_PRIORITY[action] >= ACTION_PRIORITY.get(report.action, 0):
         report.action = action
+
+
+def apply_candidate_decision(report: ReportRow, decision: CandidatePolicyDecision) -> None:
+    report.sop_label = decision.sop_label
+    report.error_types = set(decision.error_types)
+    report.primary_error_type = decision.primary_error_type
+    report.llm_policy = decision.llm_policy
+    report.selector_reason = decision.selector_reason
+    report.selection_score = f"{decision.selection_score:.4f}" if decision.selection_score else ""
+
+
+def record_policy_metrics(metrics: Metrics, decision: CandidatePolicyDecision) -> None:
+    metrics.inc(f"sop_label_{decision.sop_label}_rows")
+    metrics.inc(f"llm_policy_{decision.llm_policy.lower()}_rows")
+    for error_type in decision.error_types:
+        metrics.inc(f"error_type_{error_type}_rows")
+
+
+def mark_capped_candidates(
+    capped_candidates: list[LLMCandidate],
+    reports: list[ReportRow],
+    decisions: dict[int, CandidatePolicyDecision],
+    metrics: Metrics,
+    cap_action: str,
+) -> None:
+    if not capped_candidates:
+        return
+    report_by_id = {report.row_id: report for report in reports}
+    for candidate in capped_candidates:
+        report = report_by_id.get(candidate.row_id)
+        decision = decisions.get(candidate.row_id)
+        if not report or not decision:
+            continue
+        decision.llm_policy = "LLM_CAP_EXCEEDED"
+        report.llm_policy = "LLM_CAP_EXCEEDED"
+        report.need_human_review = True
+        report.issue_tags.update({"LLM_CAP_EXCEEDED", "NEEDS_HUMAN_REVIEW"})
+        report.notes.append("LLM candidate exceeded configured cap")
+        set_action(report, cap_action if cap_action in ACTION_PRIORITY else "HUMAN_REVIEW_REQUIRED")
+        metrics.inc("llm_cap_exceeded_rows")
 
 
 if __name__ == "__main__":

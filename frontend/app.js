@@ -28,6 +28,13 @@
     "label_type",
     "original_text",
     "final_text",
+    "sop_label",
+    "error_types",
+    "primary_error_type",
+    "llm_policy",
+    "selector_reason",
+    "selection_score",
+    "guard_decision",
     "action",
     "issue_tags",
     "used_llm",
@@ -52,6 +59,21 @@
   const QUESTION_ENDINGS = ["吗", "嘛", "好不好", "对不对", "对吧", "是不是", "行不行", "可以吗", "有没有", "什么呀", "什么啊", "什么呢", "哪里呢", "哪儿呢", "怎么呢", "怎么做呢", "怎么样", "怎么做", "多少", "哪一个"];
   const QUESTION_WORDS = ["什么", "哪里", "哪儿", "几", "怎么", "为什么", "谁"];
   const MEDIA_KEYWORDS = ["儿歌", "动画片", "播放", "歌词", "广播", "音频", "音乐", "故事机", "火箭发射", "即将关闭", "谨防夹伤"];
+  const ERROR_TYPE_PRIORITY = ["E7", "E6", "E2", "E1", "E3", "E4", "E5", "E8"];
+  const ERROR_TYPE_TAGS = {
+    E1: "DOMAIN_TERM_ERROR",
+    E2: "CHILD_UNCLEAR",
+    E3: "HOMOPHONE_ERROR",
+    E4: "REPEATED_WORDS",
+    E5: "PUNCTUATION_ERROR",
+    E6: "MULTI_SPEAKER_OVERLAP",
+    E7: "UNREADABLE_SENTENCE",
+    E8: "OTHER_ASR_ERROR",
+  };
+  const REPEATED_TOKENS = ["老师", "今天", "开始", "小朋友", "孩子", "你们", "我们", "排队", "材料"];
+  const SEVERE_DOMAIN_PATTERNS = ["建狗区", "建够区", "建构狗", "低狗区"];
+  const CHILD_SPEECH_PATTERNS = ["滑花梯", "还花花体", "花花体", "滑滑体"];
+  const UNREADABLE_PATTERNS = ["无法识别", "听不清", "不清楚", "今天们", "积积老师", "好了去"];
   const DEMO_ROWS = [
     {
       annotator: "demo",
@@ -88,6 +110,18 @@
       text_edited: "这个地结构材料可以怎么玩",
       recognition_errors: "",
       timestamp: "2026-06-06 20:00:04",
+    },
+    {
+      annotator: "demo",
+      source_file: "中一班_区域活动_demo",
+      audio_file: "000004.wav",
+      label: "teacher_1",
+      label_display: "T1",
+      label_type: "teacher",
+      teacher_id: "1",
+      text_edited: "老师今天建狗区",
+      recognition_errors: "",
+      timestamp: "2026-06-06 20:00:06",
     },
   ];
 
@@ -253,6 +287,10 @@
       tags.add("HALLUCINATION_RISK");
       needReview = true;
     }
+    if (looksMultiSpeaker(text, row.label_type || "")) {
+      tags.add("MULTI_SPEAKER_OVERLAP");
+      needReview = true;
+    }
     if (tags.size === 0) {
       tags.add("VALID_TEACHING_TEXT");
     }
@@ -261,6 +299,16 @@
       action = "HUMAN_REVIEW_REQUIRED";
     }
     return { action, tags: Array.from(tags), needReview };
+  }
+
+  function looksMultiSpeaker(text, labelType) {
+    if (labelType === "teacher") {
+      return false;
+    }
+    const questionCount = (text.match(/[？?]/g) || []).length;
+    const answerMarkers = (text.match(/老师|小朋友|孩子|你们|我们|他说|她说/g) || []).length;
+    const speakerPrefixes = (text.match(/(老师|教师|幼儿|儿童|学生)[:：]/g) || []).length;
+    return speakerPrefixes >= 2 || (text.length > 90 && questionCount >= 3 && answerMarkers >= 2) || (text.includes("同时") && (text.includes("说话") || text.includes("讲话")));
   }
 
   function cleanText(text, options) {
@@ -315,10 +363,147 @@
     return { text: current, notes };
   }
 
+  function detectErrorTypes(row, classification) {
+    const text = String(row.text_edited || "").trim();
+    const errors = String(row.recognition_errors || "");
+    const tags = new Set(classification.tags);
+    const types = new Set();
+    const issueTags = new Set();
+    let severity = 0;
+
+    if (tags.has("MULTI_SPEAKER_OVERLAP") || looksMultiSpeaker(text, row.label_type || "")) {
+      types.add("E6");
+      severity = Math.max(severity, 2);
+    }
+    if (looksUnreadable(text, tags)) {
+      types.add("E7");
+      severity = Math.max(severity, 2);
+    }
+    if (looksDomainError(text, errors)) {
+      types.add("E1");
+      severity = Math.max(severity, SEVERE_DOMAIN_PATTERNS.some((pattern) => text.includes(pattern)) ? 2 : 1);
+    }
+    if (looksChildSpeechError(row, text, errors)) {
+      types.add("E2");
+      severity = Math.max(severity, ["还花花体", "花花体"].some((pattern) => text.includes(pattern)) ? 2 : 1);
+    }
+    if (looksHomophoneError(text, errors)) {
+      types.add("E3");
+      severity = Math.max(severity, 1);
+    }
+    const repeatSeverity = repeatedSeverity(text);
+    if (repeatSeverity) {
+      types.add("E4");
+      severity = Math.max(severity, repeatSeverity);
+    }
+    if (looksPunctuationError(text)) {
+      types.add("E5");
+      severity = Math.max(severity, 1);
+    }
+    if (!types.size && errors.trim()) {
+      types.add("E8");
+      severity = Math.max(severity, 1);
+    }
+
+    types.forEach((type) => {
+      if (ERROR_TYPE_TAGS[type]) issueTags.add(ERROR_TYPE_TAGS[type]);
+    });
+    return {
+      errorTypes: Array.from(types).sort(),
+      primaryErrorType: primaryErrorType(types),
+      issueTags: Array.from(issueTags).sort(),
+      severity,
+    };
+  }
+
+  function primaryErrorType(types) {
+    return ERROR_TYPE_PRIORITY.find((type) => types.has(type)) || Array.from(types).sort()[0] || "";
+  }
+
+  function looksUnreadable(text, tags) {
+    if (tags.has("HALLUCINATION_RISK")) return false;
+    if (UNREADABLE_PATTERNS.some((pattern) => text.includes(pattern))) return true;
+    const compact = compactText(text);
+    if (compact.length < 10) return false;
+    return (compact.match(/那个好了|好了去|们玩那个|去积/g) || []).length >= 2;
+  }
+
+  function looksDomainError(text, errors) {
+    const domainWrongTerms = DOMAIN_TERMS.map(([wrong]) => wrong);
+    return domainWrongTerms.some((term) => text.includes(term)) || SEVERE_DOMAIN_PATTERNS.some((pattern) => text.includes(pattern)) || /领域|术语|积木|建构|低结构|纸巾筒/.test(errors);
+  }
+
+  function looksChildSpeechError(row, text, errors) {
+    if (CHILD_SPEECH_PATTERNS.some((pattern) => text.includes(pattern))) return true;
+    return ["student", "child", "unknown"].includes(row.label_type || "") && /儿童|发音|不清/.test(errors);
+  }
+
+  function looksHomophoneError(text, errors) {
+    const correctionWrongTerms = CORRECTION_MAP.map(([wrong]) => wrong);
+    return correctionWrongTerms.some((term) => text.includes(term)) || /同音|近音|错词|错字/.test(errors) || /兰色|篮色|排对|金木|收才料/.test(text);
+  }
+
+  function repeatedSeverity(text) {
+    if (/(.{1,4})\1{2,}/.test(text)) return 2;
+    const adjacentRepeats = REPEATED_TOKENS.filter((token) => text.includes(token + token)).length;
+    return adjacentRepeats > 0 ? 1 : 0;
+  }
+
+  function looksPunctuationError(text) {
+    const compact = compactText(text);
+    return compact.length >= 18 && (!/[。！？!?]/.test(text) || /([。！？；，、])\1+/.test(text));
+  }
+
+  function assessCandidatePolicy(row, classification, errorAnalysis, changedByRules, currentText) {
+    const tags = new Set(classification.tags);
+    const errorTypes = new Set(errorAnalysis.errorTypes);
+    const text = String(currentText || "").trim();
+    const compact = compactText(text);
+    const score = scoreCandidate(row, text, errorAnalysis);
+    let sopLabel = "0";
+    let llmPolicy = changedByRules ? "RULE_ONLY" : "KEEP";
+    let reason = "clear or rule-only Label 0 segment";
+
+    if (tags.has("EMPTY_TEXT") || tags.has("SHORT_BACKCHANNEL") || tags.has("NOISE_ONLY")) {
+      return { sopLabel: "0", llmPolicy: "KEEP", selectorReason: "low-value Label 0 segment", selectionScore: score };
+    }
+    if (errorTypes.has("E6") || errorTypes.has("E7") || tags.has("MEDIA_MATERIAL") || tags.has("MULTI_SPEAKER_OVERLAP") || tags.has("HALLUCINATION_RISK") || tags.has("NEEDS_HUMAN_REVIEW")) {
+      return { sopLabel: "2", llmPolicy: "HUMAN_REVIEW_ONLY", selectorReason: "high-risk or non-recoverable segment", selectionScore: score };
+    }
+    if (!errorTypes.size) {
+      return { sopLabel, llmPolicy, selectorReason: reason, selectionScore: score };
+    }
+
+    sopLabel = errorAnalysis.severity >= 2 ? "2" : "1";
+    if (changedByRules && sopLabel === "1") {
+      llmPolicy = "RULE_ONLY";
+      reason = "Label 1 issue resolved by rules or dictionaries";
+    } else if (sopLabel === "2" && ["E1", "E2", "E3", "E4", "E5"].some((type) => errorTypes.has(type))) {
+      llmPolicy = compact.length >= 6 && text.length <= 220 ? "MUST_LLM" : "HUMAN_REVIEW_ONLY";
+      reason = "Label 2 refinable ASR error";
+    } else {
+      llmPolicy = compact.length >= 12 && text.length <= 220 ? "OPTIONAL_LLM" : "RULE_ONLY";
+      reason = "Label 1 optional refinement candidate";
+    }
+    return { sopLabel, llmPolicy, selectorReason: reason, selectionScore: score };
+  }
+
+  function scoreCandidate(row, text, errorAnalysis) {
+    const base = { E7: 1, E6: 0.96, E2: 0.92, E1: 0.88, E3: 0.82, E4: 0.68, E5: 0.56, E8: 0.4 };
+    let score = base[errorAnalysis.primaryErrorType] || 0;
+    if (row.label_type === "teacher") score += 0.05;
+    if (text.length >= 35) score += 0.05;
+    if (String(row.recognition_errors || "").trim()) score += 0.03;
+    if (errorAnalysis.severity >= 2) score += 0.08;
+    return Math.min(score, 1).toFixed(4);
+  }
+
   function processRow(row, options) {
     const original = { ...row };
     const output = { ...row };
     const classification = classifyRow(row);
+    const errorAnalysis = detectErrorTypes(row, classification);
+    const issueTags = Array.from(new Set([...classification.tags, ...errorAnalysis.issueTags])).sort();
     const report = {
       row_id: options.rowId,
       audio_file: row.audio_file || "",
@@ -326,8 +511,15 @@
       label_type: row.label_type || "",
       original_text: row.text_edited || "",
       final_text: row.text_edited || "",
+      sop_label: "0",
+      error_types: errorAnalysis.errorTypes.join("|"),
+      primary_error_type: errorAnalysis.primaryErrorType,
+      llm_policy: "KEEP",
+      selector_reason: "",
+      selection_score: "",
+      guard_decision: "",
       action: classification.action,
-      issue_tags: classification.tags.join("|"),
+      issue_tags: issueTags.join("|"),
       used_llm: "false",
       model_name: options.modelName || "deepseek-v4-flash",
       confidence: "",
@@ -336,6 +528,13 @@
     };
 
     if (classification.action === "SKIP") {
+      const policy = assessCandidatePolicy(row, classification, errorAnalysis, false, output.text_edited || "");
+      Object.assign(report, {
+        sop_label: policy.sopLabel,
+        llm_policy: policy.llmPolicy,
+        selector_reason: policy.selectorReason,
+        selection_score: policy.selectionScore,
+      });
       return { row: output, report, changed: false, skipped: true };
     }
 
@@ -355,6 +554,18 @@
       output.text_edited = current;
       output.recognition_errors = mergeErrorNotes(output.recognition_errors, notes);
       report.action = notes.some((note) => note.includes("[姓名修正]")) ? "NAME_FIXED" : notes.some((note) => note.includes("[领域词修正]") || note.includes("[常见错词修正]")) ? "DICT_FIXED" : "RULE_FIXED";
+    }
+    const policy = assessCandidatePolicy(row, classification, errorAnalysis, changed, current);
+    Object.assign(report, {
+      sop_label: policy.sopLabel,
+      llm_policy: policy.llmPolicy,
+      selector_reason: policy.selectorReason,
+      selection_score: policy.selectionScore,
+      need_human_review: policy.llmPolicy === "HUMAN_REVIEW_ONLY" ? "true" : report.need_human_review,
+    });
+    if (policy.llmPolicy === "HUMAN_REVIEW_ONLY") {
+      report.action = "HUMAN_REVIEW_REQUIRED";
+      report.issue_tags = Array.from(new Set([...report.issue_tags.split("|").filter(Boolean), "NEEDS_HUMAN_REVIEW"])).sort().join("|");
     }
     report.final_text = current;
     report.notes = notes.join("; ");
@@ -378,6 +589,13 @@
       label_type: item.label_type,
       original_text: item.original_text,
       final_text: item.final_text,
+      sop_label: item.sop_label,
+      error_types: item.error_types,
+      primary_error_type: item.primary_error_type,
+      llm_policy: item.llm_policy,
+      selector_reason: item.selector_reason,
+      selection_score: item.selection_score,
+      guard_decision: item.guard_decision,
       action: item.action,
       issue_tags: item.issue_tags,
       used_llm: item.used_llm,
@@ -390,6 +608,28 @@
 
   function modifiedReportRows(report) {
     return reportToRows(report).filter((item) => item.original_text !== item.final_text);
+  }
+
+  function emptyMetrics() {
+    return { changed: 0, skipped: 0, review: 0, labels: {}, errors: {} };
+  }
+
+  function countPolicyMetrics(metrics, report) {
+    const label = report.sop_label || "0";
+    metrics.labels[label] = (metrics.labels[label] || 0) + 1;
+    String(report.error_types || "")
+      .split("|")
+      .filter(Boolean)
+      .forEach((type) => {
+        metrics.errors[type] = (metrics.errors[type] || 0) + 1;
+      });
+  }
+
+  function formatCountMap(values, prefix) {
+    const entries = Object.keys(values)
+      .sort()
+      .map((key) => `${prefix}${key}: ${values[key]}`);
+    return entries.length ? entries.join(" · ") : "-";
   }
 
   function initBrowserApp() {
@@ -418,7 +658,7 @@
       currentIndex: 0,
       filename: "output_cleaned.csv",
       modelName: "deepseek-v4-flash",
-      metrics: { changed: 0, skipped: 0, review: 0 },
+      metrics: emptyMetrics(),
     };
 
     function setStatus(text) {
@@ -456,7 +696,7 @@
       state.report = [];
       state.currentIndex = 0;
       state.filename = filename;
-      state.metrics = { changed: 0, skipped: 0, review: 0 };
+      state.metrics = emptyMetrics();
       setStatus("已加载");
       processBtn.disabled = rows.length === 0;
       processBtn.textContent = "开始清洗";
@@ -478,7 +718,7 @@
       state.currentIndex = 0;
       state.outputRows = state.originalRows.map((row) => ({ ...row }));
       state.report = [];
-      state.metrics = { changed: 0, skipped: 0, review: 0 };
+      state.metrics = emptyMetrics();
       setStatus("处理中");
       processBtn.disabled = true;
       pauseBtn.disabled = false;
@@ -504,6 +744,7 @@
         if (result.changed) state.metrics.changed += 1;
         if (result.skipped) state.metrics.skipped += 1;
         if (result.report.need_human_review === "true") state.metrics.review += 1;
+        countPolicyMetrics(state.metrics, result.report);
         updateCurrentPreview({ index, original: state.originalRows[index], output: result.row, report: result.report });
       }
       state.currentIndex = end;
@@ -533,6 +774,8 @@
       document.getElementById("changedRows").textContent = String(state.metrics.changed);
       document.getElementById("skippedRows").textContent = String(state.metrics.skipped);
       document.getElementById("reviewRows").textContent = String(state.metrics.review);
+      document.getElementById("labelDistribution").textContent = formatCountMap(state.metrics.labels, "L");
+      document.getElementById("errorDistribution").textContent = formatCountMap(state.metrics.errors, "");
     }
 
     function updateCurrentPreview(payload) {
@@ -542,6 +785,8 @@
         document.getElementById("currentOutput").textContent = "";
         document.getElementById("currentAction").textContent = "WAITING";
         document.getElementById("currentTags").textContent = "-";
+        document.getElementById("currentPolicy").textContent = "Label - / -";
+        document.getElementById("currentErrors").textContent = "-";
         return;
       }
       document.getElementById("currentRowId").textContent = `row_id: ${payload.index + 1}`;
@@ -549,6 +794,8 @@
       document.getElementById("currentOutput").textContent = payload.output.text_edited || "(空文本)";
       document.getElementById("currentAction").textContent = payload.report.action;
       document.getElementById("currentTags").textContent = payload.report.issue_tags || "-";
+      document.getElementById("currentPolicy").textContent = `Label ${payload.report.sop_label || "-"} / ${payload.report.llm_policy || "-"}`;
+      document.getElementById("currentErrors").textContent = payload.report.error_types || "-";
     }
 
     function renderChanges() {
@@ -566,6 +813,9 @@
                 <code>row_id: ${escapeHtml(row.row_id)}</code>
                 <span>${escapeHtml(row.audio_file || "")}</span>
                 <span>${escapeHtml(row.action || "")}</span>
+                <span>Label ${escapeHtml(row.sop_label || "-")}</span>
+                <span>${escapeHtml(row.llm_policy || "-")}</span>
+                <span>${escapeHtml(row.error_types || "-")}</span>
               </div>
               <div class="diff-grid">
                 <pre class="diff-before"><span>-</span>${escapeHtml(row.original_text || "(空文本)")}</pre>
@@ -655,7 +905,7 @@
       state.outputRows = state.originalRows.map((row) => ({ ...row }));
       state.report = [];
       state.currentIndex = 0;
-      state.metrics = { changed: 0, skipped: 0, review: 0 };
+      state.metrics = emptyMetrics();
       state.paused = false;
       state.processing = false;
       processBtn.disabled = state.originalRows.length === 0;
@@ -711,12 +961,15 @@
     serializeCsv,
     validateHeaders,
     classifyRow,
+    detectErrorTypes,
+    assessCandidatePolicy,
     cleanText,
     normalizePunctuation,
     applyDictionary,
     processRow,
     reportToRows,
     modifiedReportRows,
+    emptyMetrics,
     DEMO_ROWS,
     REQUIRED_COLUMNS,
     REPORT_HEADERS,

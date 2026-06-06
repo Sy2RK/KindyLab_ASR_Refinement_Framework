@@ -67,8 +67,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "selector": {
         "min_text_length": 12,
+        "must_min_text_length": 6,
         "max_text_length": 220,
         "max_llm_row_ratio": 0.25,
+        "label1_policy": "optional_llm",
+        "label2_policy": "must_llm",
+        "must_refine_respects_cap": True,
+        "llm_cap_exceeded_action": "HUMAN_REVIEW_REQUIRED",
+        "punctuation_error_min_length": 18,
+        "error_type_priority": ["E7", "E6", "E2", "E1", "E3", "E4", "E5", "E8"],
         "blocked_issue_tags": [
             "EMPTY_TEXT",
             "SHORT_BACKCHANNEL",

@@ -116,6 +116,36 @@ python main.py --model deepseek-v4-pro
 - `teacher_id`
 - `timestamp`
 
+## 候选选择规范
+
+系统会按 SOP 生成 `sop_label`，用于说明该行是否值得进入 LLM：
+
+- `0`：可保留，不消耗 LLM。
+- `1`：可选润色，优先规则/词典，必要时按预算进入 LLM。
+- `2`：严重影响理解，但只有可保守修正的片段进入 LLM。
+
+质量报告中的 `llm_policy` 是实际路由：
+
+- `KEEP`：保持原文。
+- `RULE_ONLY`：只采用规则或词典修正。
+- `OPTIONAL_LLM`：Label 1 候选，受调用比例预算控制。
+- `MUST_LLM`：Label 2 中可保守修正的候选，仍受全局预算和 guard 约束。
+- `HUMAN_REVIEW_ONLY`：多人重叠、不可读、疑似幻觉或多媒体材料，不让 LLM 猜测。
+- `LLM_CAP_EXCEEDED`：超过配置的 LLM 调用比例，转人工复核。
+
+错误类型写入 `error_types` 和 `primary_error_type`：
+
+- `E1`：幼教领域词错误。
+- `E2`：儿童语音识别问题。
+- `E3`：同音/近音错误。
+- `E4`：重复词。
+- `E5`：标点或断句问题。
+- `E6`：多人重叠。
+- `E7`：整体不可读。
+- `E8`：其他。
+
+这些字段只写入质量报告，不会改变最终清洗 CSV 的列结构。
+
 ## 词典
 
 词典位于 `dictionaries/`：

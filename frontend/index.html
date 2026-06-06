@@ -57,6 +57,16 @@
             <div><span id="skippedRows">0</span><small>已跳过</small></div>
             <div><span id="reviewRows">0</span><small>需复核</small></div>
           </div>
+          <div class="policy-summary" aria-label="候选分布">
+            <div>
+              <small>Label 分布</small>
+              <span id="labelDistribution">-</span>
+            </div>
+            <div>
+              <small>Error Type</small>
+              <span id="errorDistribution">-</span>
+            </div>
+          </div>
 
           <div class="current-block" aria-label="当前处理行预览">
             <div class="panel-title">
@@ -76,6 +86,10 @@
             <div class="action-strip">
               <span id="currentAction">WAITING</span>
               <span id="currentTags">-</span>
+            </div>
+            <div class="policy-strip">
+              <span id="currentPolicy">Label - / -</span>
+              <span id="currentErrors">-</span>
             </div>
           </div>
         </section>
