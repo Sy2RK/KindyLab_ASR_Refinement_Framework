@@ -140,6 +140,7 @@ def run_pipeline(config: dict[str, Any], project_root: Path) -> dict[str, Any]:
                 current_text = clean_result.text
                 row[text_column] = current_text
                 row[error_column] = merge_error_notes(row.get(error_column, ""), clean_result.edits, clean_result.notes)
+                report.notes.extend(clean_result.notes)
                 changed_by_rules = True
                 set_action(report, "RULE_FIXED")
                 metrics.inc("rule_fixed_rows")
@@ -150,6 +151,8 @@ def run_pipeline(config: dict[str, Any], project_root: Path) -> dict[str, Any]:
                     current_text = result.text
                     row[text_column] = current_text
                     row[error_column] = merge_error_notes(row.get(error_column, ""), result.edits, result.notes)
+                    report.notes.extend(edit.to_error_note() for edit in result.edits)
+                    report.notes.extend(result.notes)
                     changed_by_rules = True
                     set_action(report, action_name)
                     metrics.inc(action_name.lower() + "_rows")
@@ -301,6 +304,8 @@ def run_llm_refinement(
                 row[text_column] = refinement.refined_text
                 notes = [] if refinement.edits else ["[LLM保守修正]"]
                 row[error_column] = merge_error_notes(row.get(error_column, ""), refinement.edits, notes)
+                report.notes.extend(edit.to_error_note() for edit in refinement.edits)
+                report.notes.extend(notes)
                 set_action(report, "LLM_FIXED")
                 metrics.inc("llm_fixed_rows")
             else:

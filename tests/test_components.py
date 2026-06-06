@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from main import run_pipeline
+from server import run_refinement_job
 from src.config import DEFAULT_CONFIG
 from src.csv_io import read_csv
 from src.deepseek_client import DeepSeekClient
@@ -222,6 +223,43 @@ corrections:
             self.assertEqual(report.rows[0]["sop_label"], "2")
             self.assertEqual(report.rows[0]["primary_error_type"], "E1")
             self.assertEqual(report.rows[0]["llm_policy"], "MUST_LLM")
+
+    def test_server_refinement_job_returns_csv_payloads(self) -> None:
+        headers = [
+            "annotator",
+            "source_file",
+            "audio_file",
+            "label",
+            "label_display",
+            "label_type",
+            "teacher_id",
+            "text_edited",
+            "recognition_errors",
+            "timestamp",
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "input.csv"
+            with input_path.open("w", encoding="utf-8-sig", newline="") as file:
+                writer = csv.DictWriter(file, fieldnames=headers)
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "annotator": "tester",
+                        "source_file": "classroom",
+                        "audio_file": "1.wav",
+                        "label": "teacher",
+                        "label_display": "T",
+                        "label_type": "teacher",
+                        "teacher_id": "1",
+                        "text_edited": "嗯",
+                        "recognition_errors": "",
+                        "timestamp": "t",
+                    }
+                )
+            payload = run_refinement_job({"csv": input_path.read_text(encoding="utf-8-sig"), "model": "flash"})
+        self.assertIn("output_csv", payload)
+        self.assertIn("quality_report_csv", payload)
+        self.assertEqual(payload["summary"]["total_rows"], 1)
 
 
 if __name__ == "__main__":

@@ -51,12 +51,12 @@ DEEPSEEK_API_KEY="你的 API Key"
 
 如果没有设置 `DEEPSEEK_API_KEY`，系统会自动跳过 LLM，只执行规则、词典、格式校验和质量报告。
 
-## 本地前端
+## 本地前端与真实链路
 
-打开本地网页：
+推荐用本地服务启动前端。这个服务会同时提供页面和 `/api/refine`，API key 只在服务端读取，不会写进浏览器代码：
 
 ```bash
-python3 -m http.server 8787
+python server.py --port 8787
 ```
 
 然后访问：
@@ -65,7 +65,10 @@ python3 -m http.server 8787
 http://localhost:8787/frontend/
 ```
 
-前端支持拖入或手动选择 CSV、Flash/Pro 模型切换、实时显示处理进度和当前行预览，并在页面底部预览原 CSV、输出 CSV 和质量报告。前端只在浏览器本地执行规则/词典清洗，不会上传文件，也不会在浏览器里调用 DeepSeek。需要 LLM refinement 时继续使用 `python main.py --model flash` 或 `python main.py --model pro`。
+前端支持拖入或手动选择 CSV、Flash/Pro 模型切换、实时显示结果和当前行预览，并在页面底部预览原 CSV、输出 CSV 和质量报告。
+
+如果页面由 `python server.py` 提供，会显示 `真实链路`，点击后会把 CSV 发给本地后端，由 Python 管线调用 DeepSeek。
+如果页面由普通 `python3 -m http.server` 提供，会显示 `本地预检`，只在浏览器里执行规则、词典和候选路由模拟，不会调用 DeepSeek。
 
 前端逻辑测试：
 

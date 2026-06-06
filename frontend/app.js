@@ -656,6 +656,17 @@
     return { changed: 0, skipped: 0, review: 0, labels: {}, errors: {} };
   }
 
+  function metricsFromReport(report) {
+    const metrics = emptyMetrics();
+    reportToRows(report).forEach((row) => {
+      if (row.original_text !== row.final_text) metrics.changed += 1;
+      if (row.action === "SKIP") metrics.skipped += 1;
+      if (row.need_human_review === "true") metrics.review += 1;
+      countPolicyMetrics(metrics, row);
+    });
+    return metrics;
+  }
+
   function countPolicyMetrics(metrics, report) {
     const label = report.sop_label || "0";
     metrics.labels[label] = (metrics.labels[label] || 0) + 1;
@@ -702,11 +713,37 @@
       currentIndex: 0,
       filename: "output_cleaned.csv",
       modelName: "deepseek-v4-flash",
+      realBackend: false,
+      deepseekConfigured: false,
       metrics: emptyMetrics(),
     };
 
     function setStatus(text) {
       statusChip.textContent = text;
+    }
+
+    function setMode(realBackend, deepseekConfigured) {
+      state.realBackend = realBackend;
+      state.deepseekConfigured = deepseekConfigured;
+      document.querySelector(".mode-badge").textContent = realBackend ? (deepseekConfigured ? "真实链路" : "缺少 Key") : "本地预检";
+      document.querySelector(".download-panel h2").textContent = realBackend ? "真实清洗 CSV + 质量报告" : "本地预检 CSV + 质量报告";
+      downloadCsvBtn.textContent = realBackend ? "下载清洗 CSV" : "下载预检 CSV";
+      if (!state.processing) {
+        processBtn.textContent = realBackend ? "开始真实清洗" : "开始本地预检";
+      }
+    }
+
+    async function detectBackend() {
+      try {
+        const response = await fetch("../api/status", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("backend unavailable");
+        }
+        const status = await response.json();
+        setMode(status.mode === "real_backend", Boolean(status.deepseek_configured));
+      } catch {
+        setMode(false, false);
+      }
     }
 
     function options() {
@@ -743,7 +780,7 @@
       state.metrics = emptyMetrics();
       setStatus("已加载");
       processBtn.disabled = rows.length === 0;
-      processBtn.textContent = "开始本地预检";
+      processBtn.textContent = state.realBackend ? "开始真实清洗" : "开始本地预检";
       resetBtn.disabled = false;
       downloadCsvBtn.disabled = true;
       downloadReportBtn.disabled = true;
@@ -756,6 +793,10 @@
 
     function startProcessing() {
       if (state.processing || state.originalRows.length === 0) {
+        return;
+      }
+      if (state.realBackend) {
+        startServerProcessing();
         return;
       }
       state.processing = true;
@@ -772,6 +813,72 @@
       renderChanges();
       renderPolicyHits();
       processChunk();
+    }
+
+    async function startServerProcessing() {
+      state.processing = true;
+      state.paused = false;
+      state.currentIndex = 0;
+      state.outputRows = state.originalRows.map((row) => ({ ...row }));
+      state.report = [];
+      state.metrics = emptyMetrics();
+      setStatus(state.deepseekConfigured ? "真实清洗中" : "等待 Key");
+      processBtn.disabled = true;
+      pauseBtn.disabled = true;
+      downloadCsvBtn.disabled = true;
+      downloadReportBtn.disabled = true;
+      renderChanges();
+      renderPolicyHits();
+      updateProgress(0, state.originalRows.length);
+
+      try {
+        const response = await fetch("../api/refine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            csv: serializeCsv(state.headers, state.originalRows),
+            filename: state.filename,
+            model: state.modelName,
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok || payload.error) {
+          throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+        applyServerResult(payload);
+        setStatus("真实完成");
+        processBtn.textContent = "重新真实清洗";
+        downloadCsvBtn.disabled = false;
+        downloadReportBtn.disabled = false;
+      } catch (error) {
+        setStatus("真实链路失败");
+        tableWrap.innerHTML = `<p class="empty-state">${escapeHtml(error.message)}</p>`;
+      } finally {
+        state.processing = false;
+        processBtn.disabled = state.originalRows.length === 0;
+      }
+    }
+
+    function applyServerResult(payload) {
+      const output = parseCsv(String(payload.output_csv || ""));
+      const report = parseCsv(String(payload.quality_report_csv || ""));
+      state.outputRows = output.rows;
+      state.report = report.rows;
+      state.metrics = metricsFromReport(state.report);
+      state.currentIndex = state.originalRows.length;
+      updateProgress(state.originalRows.length, state.originalRows.length);
+      const lastIndex = Math.max(0, Math.min(state.outputRows.length, state.originalRows.length) - 1);
+      if (state.originalRows.length) {
+        updateCurrentPreview({
+          index: lastIndex,
+          original: state.originalRows[lastIndex],
+          output: state.outputRows[lastIndex],
+          report: state.report[lastIndex] || {},
+        });
+      }
+      renderChanges();
+      renderPolicyHits();
+      renderPreview();
     }
 
     function processChunk() {
@@ -973,7 +1080,7 @@
         processBtn.disabled = true;
         processChunk();
       } else {
-        processBtn.textContent = "开始本地预检";
+        processBtn.textContent = state.realBackend ? "开始真实清洗" : "开始本地预检";
         startProcessing();
       }
     });
@@ -989,7 +1096,7 @@
       state.paused = false;
       state.processing = false;
       processBtn.disabled = state.originalRows.length === 0;
-      processBtn.textContent = "开始本地预检";
+      processBtn.textContent = state.realBackend ? "开始真实清洗" : "开始本地预检";
       pauseBtn.disabled = true;
       downloadCsvBtn.disabled = true;
       downloadReportBtn.disabled = true;
@@ -1022,6 +1129,7 @@
     });
     downloadCsvBtn.addEventListener("click", () => downloadCsv("output"));
     downloadReportBtn.addEventListener("click", () => downloadCsv("report"));
+    detectBackend();
   }
 
   function escapeHtml(value) {
